@@ -170,7 +170,7 @@ public class ConfigConstructor extends Constructor {
 
         Pattern pattern = Pattern.compile(projectPattern);
 
-        return api.getAllProjects()
+        return api.getProjects()
             .stream()
             .filter(gitlabProject -> namespace.equals(gitlabProject.getNamespace().getName()))
             .filter(gitlabProject -> pattern.matcher(gitlabProject.getName()).matches())
