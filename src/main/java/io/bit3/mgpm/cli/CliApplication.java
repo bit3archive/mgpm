@@ -57,7 +57,7 @@ public class CliApplication {
         continue;
       }
 
-      if (args.isDoUpdate() && !checkIfUpdatePossible(repositoryConfig)) {
+      if (!args.isDoStat() && (!args.isDoUpdate() || !checkIfUpdatePossible(repositoryConfig))) {
         continue;
       }
 
