@@ -168,30 +168,11 @@ public class ConfigConstructor extends Constructor {
 
         GitlabAPI api = GitlabAPI.connect(hostUrl, token);
 
-        List<GitlabNamespace> gitlabNamespaces = Arrays.asList(
-            api.retrieve().to("/namespaces?search=" + namespace, GitlabNamespace[].class)
-        );
-        List<Integer> gitlabNamespaceIds = gitlabNamespaces
-            .stream()
-            .filter(gitlabNamespace -> namespace.equals(gitlabNamespace.getPath()))
-            .map(gitlabNamespace -> gitlabNamespace.getId())
-            .collect(Collectors.toList());
-
-        if (gitlabNamespaceIds.isEmpty()) {
-          throw new InvalidConfigException(
-              String.format(
-                  "Gitlab namespace \"%s\" does not exist on \"%s\"",
-                  namespace,
-                  hostUrl
-              )
-          );
-        }
-
         Pattern pattern = Pattern.compile(projectPattern);
 
         return api.getAllProjects()
             .stream()
-            .filter(gitlabProject -> gitlabNamespaceIds.contains(gitlabProject.getNamespace().getId()))
+            .filter(gitlabProject -> namespace.equals(gitlabProject.getNamespace().getName()))
             .filter(gitlabProject -> pattern.matcher(gitlabProject.getName()).matches())
             .collect(Collectors.toList());
       } catch (IOException e) {
