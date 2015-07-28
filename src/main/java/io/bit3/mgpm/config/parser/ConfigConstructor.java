@@ -137,6 +137,8 @@ public class ConfigConstructor extends Constructor {
         List<Repository> repositories = service.getRepositories(owner);
         Pattern pattern = Pattern.compile(namePattern);
 
+        repositories.sort((r1, r2) -> r1.getName().compareToIgnoreCase(r2.getName()));
+
         return repositories
             .stream()
             .filter(r -> pattern.matcher(r.getName()).matches())
@@ -154,6 +156,8 @@ public class ConfigConstructor extends Constructor {
 
       List<GitlabProject> projects = fetchGitlabProjects(
           config, hostUrl, token, namespace, projectPattern);
+
+      projects.sort((p1, p2) -> p1.getName().compareToIgnoreCase(p2.getName()));
 
       for (GitlabProject project : projects) {
         String url = project.getSshUrl();
