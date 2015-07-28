@@ -99,7 +99,7 @@ public class AnsiOutput {
 
   public AnsiOutput print(Color foregroundColor, String msg, Object... arguments) {
     printRepository();
-    color(foregroundColor.foregroundCode);
+    color(foregroundColor.foregroundCode, foregroundColor.foregroundIntensity);
     print(msg, arguments);
     reset();
 
@@ -109,8 +109,8 @@ public class AnsiOutput {
   public AnsiOutput print(Color foregroundColor, Color backgroundColor,
                     String msg, Object... arguments) {
     printRepository();
-    color(foregroundColor.foregroundCode);
-    color(foregroundColor.backgroundCode);
+    color(foregroundColor.foregroundCode, foregroundColor.foregroundIntensity);
+    color(foregroundColor.backgroundCode, backgroundColor.backgroundIntensity);
     print(msg, arguments);
     reset();
 
@@ -126,7 +126,7 @@ public class AnsiOutput {
 
   public AnsiOutput print(Color foregroundColor, int integer) {
     printRepository();
-    color(foregroundColor.foregroundCode);
+    color(foregroundColor.foregroundCode, foregroundColor.foregroundIntensity);
     print(integer);
     reset();
 
@@ -135,21 +135,23 @@ public class AnsiOutput {
 
   public AnsiOutput print(Color foregroundColor, Color backgroundColor, int integer) {
     printRepository();
-    color(foregroundColor.foregroundCode);
-    color(foregroundColor.backgroundCode);
+    color(foregroundColor.foregroundCode, foregroundColor.foregroundIntensity);
+    color(backgroundColor.backgroundCode, backgroundColor.backgroundIntensity);
     print(integer);
     reset();
 
     return this;
   }
 
-  private void color(int code) {
+  private void color(int code, int intensity) {
     if (!DECORATED) {
       return;
     }
 
     out.print(ESCAPE);
     out.print('[');
+    out.print(intensity);
+    out.print(';');
     out.print(code);
     out.print('m');
   }
@@ -164,21 +166,27 @@ public class AnsiOutput {
   }
 
   public enum Color {
-    BLACK(30, 40),
-    RED(31, 41),
-    GREEN(32, 42),
-    YELLOW(33, 43),
-    BLUE(34, 44),
-    MAGENTA(35, 45),
-    CYAN(36, 46),
-    WHITE(37, 47);
+    BLACK(30, 0, 40, 0),
+    DARK_GRAY(30, 1, 40, 1),
+    RED(31, 0, 41, 0),
+    GREEN(32, 0, 42, 0),
+    YELLOW(33, 0, 43, 0),
+    BLUE(34, 0, 44, 0),
+    MAGENTA(35, 0, 45, 0),
+    CYAN(36, 0, 46, 0),
+    LIGHT_GRAY(37, 0, 47, 0),
+    WHITE(37, 1, 47, 1);
 
     private final int foregroundCode;
+    private final int foregroundIntensity;
     private final int backgroundCode;
+    private final int backgroundIntensity;
 
-    Color(int foregroundCode, int backgroundCode) {
+    Color(int foregroundCode, int foregroundIntensity, int backgroundCode, int backgroundIntensity) {
       this.foregroundCode = foregroundCode;
+      this.foregroundIntensity = foregroundIntensity;
       this.backgroundCode = backgroundCode;
+      this.backgroundIntensity = backgroundIntensity;
     }
   }
 }
