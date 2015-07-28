@@ -4,6 +4,7 @@ import io.bit3.mgpm.config.RepositoryConfig;
 
 import org.apache.commons.lang.StringUtils;
 
+import java.io.File;
 import java.io.FileDescriptor;
 import java.io.PrintStream;
 
@@ -17,7 +18,15 @@ public class AnsiOutput {
 
   static {
     POSIX posix = POSIXFactory.getPOSIX();
-    DECORATED = posix.isatty(FileDescriptor.out);
+
+    if ('\\' == File.separatorChar) {
+      String ansicon = System.getenv("ANSICON");
+      String conEmuAnsi = System.getenv("ConEmuANSI");
+      DECORATED = null != ansicon && !ansicon.isEmpty() && !"false".equals(ansicon)
+              || null != conEmuAnsi && "ON".equals(conEmuAnsi);
+    } else {
+      DECORATED = posix.isatty(FileDescriptor.out);
+    }
   }
 
   private final int pad;
