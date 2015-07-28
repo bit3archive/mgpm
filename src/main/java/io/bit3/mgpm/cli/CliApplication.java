@@ -5,16 +5,13 @@ import io.bit3.mgpm.config.Config;
 import io.bit3.mgpm.config.RepositoryConfig;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -72,29 +69,51 @@ public class CliApplication {
       }
 
       for (String branchName : branchNames) {
-        String remoteName = git(directory, "config", "--local", "--get", String.format("branch.%s.remote", branchName));
-        String remoteBranch = git(directory, "config", "--local", "--get", String.format("branch.%s.merge", branchName));
+        String remoteName = null;
+        String remoteBranch = null;
 
-        if ("".equals(remoteName)
-            || "".equals(remoteBranch)
-            || !remoteBranch.startsWith("refs/heads/")) {
-          // skip branch without upstream remote or branch
-          continue;
+        try {
+          remoteName = git(directory, "config", "--local", "--get", String.format("branch.%s.remote", branchName));
+        } catch (Exception e) {
+          // exception means, there is no remote configured
         }
 
-        if (!fetchedRemotes.contains(remoteName)) {
+        try {
+          remoteBranch = git(directory, "config", "--local", "--get", String.format("branch.%s.merge", branchName));
+        } catch (Exception e) {
+          // exception means, there is no remote configured
+        }
+
+        boolean hasUpstream = !(
+                null == remoteName
+            || "".equals(remoteName)
+            || null == remoteBranch
+            || "".equals(remoteBranch)
+            || !remoteBranch.startsWith("refs/heads/"));
+
+        if (hasUpstream && !fetchedRemotes.contains(remoteName)) {
           git(directory, "fetch", remoteName);
           fetchedRemotes.add(remoteName);
         }
 
         output.print(AnsiOutput.Color.CYAN, branchName);
 
-        if (args.isDoUpdate()) {
-          doUpdate(repositoryConfig, branchName);
+        if (head.equals(branchName)) {
+          output.print(AnsiOutput.Color.YELLOW, " *");
         }
 
-        if (args.isDoUpdate() || args.isDoStat()) {
-          doStat(repositoryConfig, branchName, remoteName, remoteBranch);
+        if (args.isDoUpdate()) {
+          if (hasUpstream) {
+            doUpdate(repositoryConfig, branchName, head);
+          } else {
+            output.print(AnsiOutput.Color.DARK_GRAY, " no upstream");
+          }
+        }
+
+        if ((hasUpstream || head.equals(branchName)) && (args.isDoUpdate() || args.isDoStat())) {
+          doStat(repositoryConfig, branchName, head.equals(branchName), remoteName, remoteBranch);
+        } else if (args.isDoUpdate()) {
+          output.println();
         }
       }
 
@@ -175,55 +194,57 @@ public class CliApplication {
     return true;
   }
 
-  private boolean doUpdate(RepositoryConfig repositoryConfig, String branchName) {
+  private boolean doUpdate(RepositoryConfig repositoryConfig, String branchName, String head) {
     File directory = repositoryConfig.getDirectory();
 
-    String remoteName = git(directory, "config", "--local", "--get", String.format("branch.%s.remote", branchName));
-    String remoteBranch = git(directory, "config", "--local", "--get", String.format("branch.%s.merge", branchName));
-
-    if (null == remoteName || "".equals(remoteName)
-        || null == remoteBranch || "".equals(remoteBranch)
-        || !remoteBranch.startsWith("refs/heads/")) {
-      output.println(AnsiOutput.Color.YELLOW, " skipped");
-
-      // skip branch without upstream remote or branch
-      return true;
+    try {
+      git(directory, "checkout", branchName);
+      git(directory, "submodule", "sync");
+      git(directory, "submodule", "update");
+      git(directory, "pull");
+    } finally {
+      git(directory, "checkout", head);
     }
-
-    git(directory, "checkout", branchName);
-    git(directory, "submodule", "sync");
-    git(directory, "submodule", "update");
-    git(directory, "pull");
 
     output.print(AnsiOutput.Color.GREEN, " updated");
 
     return true;
   }
 
-  private boolean doStat(RepositoryConfig repository, String branchName, String remoteName, String remoteBranch) {
+  private boolean doStat(RepositoryConfig repository, String branchName, boolean isHead, String remoteName, String remoteBranch) {
     File directory = repository.getDirectory();
 
-// remove "refs/heads/"
-    remoteBranch = remoteBranch.substring(11);
-    // prepend remote name
-    remoteBranch = remoteName + "/" + remoteBranch;
+    int commitsBehind = 0;
+    int commitsAhead = 0;
+    int conflicts = 0;
+    int index = 0;
+    int workingTree = 0;
 
-    String localRef = git(directory, "rev-parse", branchName);
-    String remoteRef = git(directory, "rev-parse", remoteBranch);
+    if (null != remoteName && null != remoteBranch) {
+      // remove "refs/heads/"
+      remoteBranch = remoteBranch.substring(11);
+      // prepend remote name
+      remoteBranch = remoteName + "/" + remoteBranch;
 
-    int commitsBehind = Integer.parseInt(
-        git(directory, "rev-list", "--count", String.format("%s..%s", localRef, remoteRef))
-    );
+      String localRef = git(directory, "rev-parse", branchName);
+      String remoteRef = git(directory, "rev-parse", remoteBranch);
 
-    int commitsAhead = Integer.parseInt(
-        git(directory, "rev-list", "--count", String.format("%s..%s", remoteRef, localRef))
-    );
+      commitsBehind = Integer.parseInt(
+          git(directory, "rev-list", "--count", String.format("%s..%s", localRef, remoteRef))
+      );
 
-    Status status = parseStatus(git(directory, "status", "--porcelain"));
+      commitsAhead = Integer.parseInt(
+          git(directory, "rev-list", "--count", String.format("%s..%s", remoteRef, localRef))
+      );
+    }
 
-    int conflicts = status.index.unmerged + status.workingTree.unmerged;
-    int index = status.index.total();
-    int workingTree = status.workingTree.total();
+    if (isHead) {
+      Status status = parseStatus(git(directory, "status", "--porcelain"));
+
+      conflicts = status.index.unmerged + status.workingTree.unmerged;
+      index = status.index.total();
+      workingTree = status.workingTree.total();
+    }
 
     formatStats(commitsBehind, commitsAhead, conflicts, index, workingTree);
 
@@ -284,7 +305,20 @@ public class CliApplication {
 
       if (0 != exitCode) {
         String error = IOUtils.toString(process.getErrorStream()).trim();
-        throw new RuntimeException(error);
+
+        if (StringUtils.isEmpty(error)) {
+          error = IOUtils.toString(process.getInputStream()).trim();
+        }
+
+        String message = String.format(
+                "execution of \"%s\" in \"%s\" failed with exit code %d: %s",
+                String.join(" ", command),
+                directory.getAbsolutePath(),
+                exitCode,
+                error
+        );
+
+        throw new RuntimeException(message);
       }
 
       return IOUtils.toString(process.getInputStream()).replaceAll("\\s+$", "");
