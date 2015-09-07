@@ -348,6 +348,7 @@ public class CliApplication {
         .stream()
         .map((String branch) -> branch.replaceFirst("^\\*", "").trim())
         .filter(branch -> !branch.isEmpty())
+        .sorted()
         .collect(Collectors.toList());
   }
 
