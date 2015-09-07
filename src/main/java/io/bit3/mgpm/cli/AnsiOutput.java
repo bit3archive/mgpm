@@ -169,6 +169,7 @@ public class AnsiOutput {
     BLACK(30, 0, 40, 0),
     DARK_GRAY(30, 1, 40, 1),
     RED(31, 0, 41, 0),
+    LIGHT_RED(31, 0, 41, 1),
     GREEN(32, 0, 42, 0),
     YELLOW(33, 0, 43, 0),
     BLUE(34, 0, 44, 0),

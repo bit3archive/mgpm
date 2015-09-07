@@ -54,11 +54,13 @@ public class CliApplication {
 
       File directory = repositoryConfig.getDirectory();
 
-      if (!directory.isDirectory() || !new File(directory, ".git").isDirectory()) {
+      if (!directory.isDirectory()) {
+        output.println(AnsiOutput.Color.YELLOW, "  missing");
         continue;
       }
 
-      if (!args.isDoStat() && (!args.isDoUpdate() || !checkIfUpdatePossible(repositoryConfig))) {
+      if (!new File(directory, ".git").isDirectory()) {
+        output.println(AnsiOutput.Color.LIGHT_RED, "  not a git repository");
         continue;
       }
 
@@ -102,13 +104,19 @@ public class CliApplication {
           fetchedRemotes.add(remoteName);
         }
 
-        output.print(AnsiOutput.Color.CYAN, branchName);
-
         if (head.equals(branchName)) {
-          output.print(AnsiOutput.Color.YELLOW, " *");
+          output.print(AnsiOutput.Color.YELLOW, "* ");
+        } else {
+          output.print("  ");
         }
 
-        if (args.isDoUpdate()) {
+        output.print(AnsiOutput.Color.CYAN, branchName);
+
+        if ((hasUpstream || head.equals(branchName)) && (args.isDoUpdate() || args.isDoStat())) {
+          doStat(repositoryConfig, branchName, head.equals(branchName), remoteName, remoteBranch);
+        }
+
+        if (args.isDoUpdate() && checkIfUpdatePossible(repositoryConfig)) {
           if (hasUpstream) {
             doUpdate(repositoryConfig, branchName, head);
           } else {
@@ -116,11 +124,7 @@ public class CliApplication {
           }
         }
 
-        if ((hasUpstream || head.equals(branchName)) && (args.isDoUpdate() || args.isDoStat())) {
-          doStat(repositoryConfig, branchName, head.equals(branchName), remoteName, remoteBranch);
-        } else if (args.isDoUpdate()) {
-          output.println();
-        }
+        output.println();
       }
 
       if (branchNames.contains(head)) {
@@ -197,12 +201,12 @@ public class CliApplication {
     int workingTree = status.workingTree.total();
 
     if (conflicts > 0) {
-      output.println(AnsiOutput.Color.RED, " cannot update, has conflicts");
+      output.print(AnsiOutput.Color.LIGHT_RED, "  cannot update, has conflicts");
       return false;
     }
 
     if (index > 0 || workingTree > 0) {
-      output.println(AnsiOutput.Color.RED, " cannot update, has changes");
+      output.print(AnsiOutput.Color.LIGHT_RED, "  cannot update, has changes");
       return false;
     }
 
@@ -217,11 +221,12 @@ public class CliApplication {
       git(directory, "submodule", "sync");
       git(directory, "submodule", "update");
       git(directory, "pull");
-    } finally {
       git(directory, "checkout", head);
+      output.print(AnsiOutput.Color.GREEN, " updated");
+    } catch (RuntimeException exception) {
+      output.print(AnsiOutput.Color.LIGHT_RED, " " + exception.getMessage());
+      return false;
     }
-
-    output.print(AnsiOutput.Color.GREEN, " updated");
 
     return true;
   }
@@ -262,8 +267,6 @@ public class CliApplication {
     }
 
     formatStats(commitsBehind, commitsAhead, conflicts, index, workingTree);
-
-    output.println();
 
     return true;
   }
