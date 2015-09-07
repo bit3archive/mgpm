@@ -4,6 +4,7 @@ import io.bit3.mgpm.cmd.Args;
 import io.bit3.mgpm.config.Config;
 import io.bit3.mgpm.config.RepositoryConfig;
 
+import io.bit3.mgpm.config.Strategy;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,6 +40,8 @@ public class CliApplication {
 
     output = new AnsiOutput(pad);
 
+    List<File> repositoryDirectories = new LinkedList<>();
+
     for (RepositoryConfig repositoryConfig : config.getRepositories()) {
       output.setRepositoryConfig(repositoryConfig);
 
@@ -57,6 +61,8 @@ public class CliApplication {
       if (!args.isDoStat() && (!args.isDoUpdate() || !checkIfUpdatePossible(repositoryConfig))) {
         continue;
       }
+
+      repositoryDirectories.add(directory);
 
       Set<String> fetchedRemotes = new HashSet<>();
       List<String> branchNames = parseBranches(git(directory, "branch"));
@@ -119,6 +125,15 @@ public class CliApplication {
 
       if (branchNames.contains(head)) {
         git(directory, "checkout", head);
+      }
+    }
+
+    File currentWorkingDirectory = Paths.get(".").toAbsolutePath().normalize().toFile();
+
+    for (File child : currentWorkingDirectory.listFiles(File::isDirectory)) {
+      if (!repositoryDirectories.contains(child)) {
+        output.setRepositoryConfig(new RepositoryConfig(child.getName(), null, Strategy.HEAD));
+        output.println(AnsiOutput.Color.YELLOW, "  superfluous");
       }
     }
   }
