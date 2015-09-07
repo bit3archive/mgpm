@@ -30,6 +30,14 @@ public class Asserts {
     }
   }
 
+  public static void assertIsBoolean(Object object, String message, Object... arguments) {
+    if (!(object instanceof Boolean)) {
+      throw new InvalidConfigException(
+          String.format(message, arguments)
+      );
+    }
+  }
+
   public static void assertIsList(Object object, String message, Object... arguments) {
     if (!(object instanceof List)) {
       throw new InvalidConfigException(
