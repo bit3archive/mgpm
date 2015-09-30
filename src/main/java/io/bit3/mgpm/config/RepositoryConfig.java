@@ -51,11 +51,11 @@ public class RepositoryConfig {
 
   @Override
   public int hashCode() {
-    return directory.hashCode();
+    return getDirectory().hashCode();
   }
 
   @Override
   public String toString() {
-    return directory.toString();
+    return getDirectory().toString();
   }
 }
