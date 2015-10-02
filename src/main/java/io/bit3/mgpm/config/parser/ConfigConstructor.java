@@ -1,5 +1,6 @@
 package io.bit3.mgpm.config.parser;
 
+import static io.bit3.mgpm.config.parser.Asserts.assertIsBoolean;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsList;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsMap;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsString;
@@ -16,7 +17,6 @@ import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.client.GitHubClient;
 import org.eclipse.egit.github.core.service.RepositoryService;
 import org.gitlab.api.GitlabAPI;
-import org.gitlab.api.models.GitlabNamespace;
 import org.gitlab.api.models.GitlabProject;
 import org.yaml.snakeyaml.constructor.AbstractConstruct;
 import org.yaml.snakeyaml.constructor.Constructor;
@@ -26,7 +26,6 @@ import org.yaml.snakeyaml.nodes.NodeId;
 import org.yaml.snakeyaml.nodes.Tag;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -153,6 +152,7 @@ public class ConfigConstructor extends Constructor {
       String token = castGitlabRepositoryTokenValue(map.get("token"), repositoryIndex);
       String namespace = castGitlabRepositoryNamespaceValue(map.get("namespace"), repositoryIndex);
       String projectPattern = castGitlabRepositoryProjectPatternValue(map.get("name"), repositoryIndex);
+      boolean includeArchived = castGitlabRepositoryArchivedValue(map.get("archived"), repositoryIndex);
 
       List<GitlabProject> projects = fetchGitlabProjects(
           config, hostUrl, token, namespace, projectPattern);
@@ -160,9 +160,14 @@ public class ConfigConstructor extends Constructor {
       projects.sort((p1, p2) -> p1.getName().compareToIgnoreCase(p2.getName()));
 
       for (GitlabProject project : projects) {
+        // skip archived projects
+        if (!includeArchived && project.isArchived()) {
+          continue;
+        }
+
         String url = project.getSshUrl();
 
-        config.getRepositories().add(new RepositoryConfig(project.getName(), url, Strategy.HEAD));
+        config.getRepositories().add(new RepositoryConfig(project.getPath(), url, Strategy.HEAD));
       }
     }
 
@@ -318,6 +323,16 @@ public class ConfigConstructor extends Constructor {
       assertIsString(object, "repsitories[%d].project must be a string", repositoryIndex);
 
       return (String) object;
+    }
+
+    private Boolean castGitlabRepositoryArchivedValue(Object object, int repositoryIndex) {
+      if (null == object) {
+        return false;
+      }
+
+      assertIsBoolean(object, "repsitories[%d].project must be a boolean", repositoryIndex);
+
+      return (Boolean) object;
     }
   }
 }

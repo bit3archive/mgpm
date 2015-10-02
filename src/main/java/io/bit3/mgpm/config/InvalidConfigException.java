@@ -1,8 +1,5 @@
 package io.bit3.mgpm.config;
 
-import java.util.LinkedList;
-import java.util.List;
-
 public class InvalidConfigException extends RuntimeException {
   public InvalidConfigException() {
   }

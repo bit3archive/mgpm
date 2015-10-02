@@ -48,4 +48,14 @@ public class RepositoryConfig {
   public void setDirectory(File directory) {
     this.directory = directory;
   }
+
+  @Override
+  public int hashCode() {
+    return getDirectory().hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return getDirectory().toString();
+  }
 }
