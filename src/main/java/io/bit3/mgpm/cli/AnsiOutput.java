@@ -1,9 +1,5 @@
 package io.bit3.mgpm.cli;
 
-import io.bit3.mgpm.config.RepositoryConfig;
-
-import org.apache.commons.lang.StringUtils;
-
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.PrintStream;
@@ -16,6 +12,8 @@ public class AnsiOutput {
   private final static char BACKSPACE = '\u0008';
   private final static PrintStream out = System.out;
   private final static boolean DECORATED;
+  private final static AnsiOutput instance;
+  private final static String[] spinnerCharacters = new String[]{"|", "/", "-", "\\"};
 
   static {
     POSIX posix = POSIXFactory.getPOSIX();
@@ -24,10 +22,22 @@ public class AnsiOutput {
       String ansicon = System.getenv("ANSICON");
       String conEmuAnsi = System.getenv("ConEmuANSI");
       DECORATED = null != ansicon && !ansicon.isEmpty() && !"false".equals(ansicon)
-              || null != conEmuAnsi && "ON".equals(conEmuAnsi);
+          || null != conEmuAnsi && "ON".equals(conEmuAnsi);
     } else {
       DECORATED = posix.isatty(FileDescriptor.out);
     }
+
+    instance = new AnsiOutput();
+  }
+
+  private int spinnerIndex = 0;
+  private boolean spinnerPrinted = false;
+
+  private AnsiOutput() {
+  }
+
+  public static AnsiOutput getInstance() {
+    return instance;
   }
 
   public AnsiOutput println() {
@@ -65,7 +75,7 @@ public class AnsiOutput {
   }
 
   public AnsiOutput print(Color foregroundColor, Color backgroundColor,
-                    String msg, Object... arguments) {
+                          String msg, Object... arguments) {
     color(foregroundColor.foregroundCode, foregroundColor.foregroundIntensity);
     color(foregroundColor.backgroundCode, backgroundColor.backgroundIntensity);
     print(msg, arguments);
@@ -97,7 +107,24 @@ public class AnsiOutput {
     return this;
   }
 
-  public AnsiOutput delete() {
+  public AnsiOutput rotateSpinner() {
+    if (!DECORATED) {
+      return this;
+    }
+
+    deleteSpinner();
+    out.print(spinnerCharacters[spinnerIndex]);
+    spinnerIndex = (spinnerIndex + 1) % spinnerCharacters.length;
+    spinnerPrinted = true;
+
+    return this;
+  }
+
+  public AnsiOutput deleteSpinner() {
+    if (!DECORATED || !spinnerPrinted) {
+      return this;
+    }
+
     out.write(BACKSPACE);
 
     return this;

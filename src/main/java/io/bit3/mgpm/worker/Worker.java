@@ -30,9 +30,13 @@ public class Worker implements Runnable {
   private final boolean cloneIfNotExists;
   private final Set<String> remoteNames = new HashSet<>();
   private final List<String> localBranchNames = new LinkedList<>();
+  private final Map<String, List<String>> oldRemoteBranchNames = new HashMap<>();
   private final Map<String, List<String>> remoteBranchNames = new HashMap<>();
+  private final Map<String, List<String>> deletedRemoteBranchNames = new HashMap<>();
+  private final Map<String, List<String>> addedRemoteBranchNames = new HashMap<>();
   private final Map<String, Upstream> branchUpstreamMap = new HashMap<>();
   private final Map<String, Update> branchUpdateStatus = new HashMap<>();
+  private final Map<String, FromToIsh> branchUpdateIsh = new HashMap<>();
   private final Map<String, Stats> branchStats = new HashMap<>();
   private String headSymbolicRef;
   private String headCommitRef;
@@ -71,8 +75,20 @@ public class Worker implements Runnable {
     return localBranchNames;
   }
 
+  public Map<String, List<String>> getOldRemoteBranchNames() {
+    return oldRemoteBranchNames;
+  }
+
   public Map<String, List<String>> getRemoteBranchNames() {
     return remoteBranchNames;
+  }
+
+  public Map<String, List<String>> getDeletedRemoteBranchNames() {
+    return deletedRemoteBranchNames;
+  }
+
+  public Map<String, List<String>> getAddedRemoteBranchNames() {
+    return addedRemoteBranchNames;
   }
 
   public Map<String, Upstream> getBranchUpstreamMap() {
@@ -81,6 +97,10 @@ public class Worker implements Runnable {
 
   public Map<String, Update> getBranchUpdateStatus() {
     return branchUpdateStatus;
+  }
+
+  public Map<String, FromToIsh> getBranchUpdateIsh() {
+    return branchUpdateIsh;
   }
 
   public Map<String, Stats> getBranchStats() {
@@ -108,9 +128,13 @@ public class Worker implements Runnable {
     try {
       if (cloneOrReconfigureRepository()) {
         determineHead();
-        stashChanges();
-        determineBranchesAndUpstreams();
+        determineRemoteBranches(oldRemoteBranchNames);
         fetchRemotes();
+        determineRemoteBranches(remoteBranchNames);
+        calculateRemoteBranchNameChanges();
+        determineLocalBranchesAndUpstreams();
+        determineStats();
+        stashChanges();
         updateBranches();
         restoreHead();
         unstashChanges();
@@ -190,7 +214,7 @@ public class Worker implements Runnable {
    * Stash changes, if necessary.
    */
   private void stashChanges() throws GitProcessException {
-    if (StringUtils.isEmpty(git("status", "--porcelain"))) {
+    if (StringUtils.isEmpty(git("status", "--porcelain", "--ignore-submodules"))) {
       return;
     }
 
@@ -211,15 +235,54 @@ public class Worker implements Runnable {
     git("stash", "pop");
   }
 
+  private void determineRemoteBranches(Map<String, List<String>> remoteBranchNames) throws GitProcessException {
+    activity(Action.PARSE_REMOTE_BRANCHES, "parse remote branches");
+    remoteBranchNames.putAll(parseRemoteBranches(git("branch", "-r")));
+  }
+
+  private void calculateRemoteBranchNameChanges() {
+    for (Map.Entry<String, List<String>> entry : oldRemoteBranchNames.entrySet()) {
+      String remoteName = entry.getKey();
+      List<String> oldBranchNames = entry.getValue();
+      List<String> newBranchNames = remoteBranchNames.get(remoteName);
+
+      if (null == newBranchNames) {
+        deletedRemoteBranchNames.put(remoteName, oldBranchNames);
+      } else {
+        LinkedList<String> deletedBranchNames = new LinkedList<>(oldBranchNames);
+        deletedBranchNames.removeAll(newBranchNames);
+
+        if (!deletedBranchNames.isEmpty()) {
+          deletedRemoteBranchNames.put(remoteName, deletedBranchNames);
+        }
+      }
+    }
+
+
+    for (Map.Entry<String, List<String>> entry : remoteBranchNames.entrySet()) {
+      String remoteName = entry.getKey();
+      List<String> newBranchNames = entry.getValue();
+      List<String> oldBranchNames = oldRemoteBranchNames.get(remoteName);
+
+      if (null == oldBranchNames) {
+        addedRemoteBranchNames.put(remoteName, newBranchNames);
+      } else {
+        LinkedList<String> addedBranchNames = new LinkedList<>(newBranchNames);
+        addedBranchNames.removeAll(oldBranchNames);
+
+        if (!addedBranchNames.isEmpty()) {
+          addedRemoteBranchNames.put(remoteName, addedBranchNames);
+        }
+      }
+    }
+  }
+
   /**
    * Determine local and remote branches and upstreams.
    */
-  private void determineBranchesAndUpstreams() throws GitProcessException {
+  private void determineLocalBranchesAndUpstreams() throws GitProcessException {
     activity(Action.PARSE_LOCAL_BRANCHES, "parse local branches");
     localBranchNames.addAll(parseLocalBranches(git("branch")));
-
-    activity(Action.PARSE_REMOTE_BRANCHES, "parse remote branches");
-    remoteBranchNames.putAll(parseRemoteBranches(git("branch", "-r")));
 
     activity(Action.DETERMINE_UPSTREAMS, "determine branch upstreams");
     for (String branchName : localBranchNames) {
@@ -269,7 +332,7 @@ public class Worker implements Runnable {
   private void fetchRemotes() throws GitProcessException {
     activity(Action.FETCH_REMOTES, "fetch remotes {}", String.join(", ", remoteNames));
 
-    List<String> command = Arrays.asList("fetch", "--prune", "--multiple");
+    List<String> command = new LinkedList<>(Arrays.asList("fetch", "--prune", "--multiple"));
     command.addAll(remoteNames);
     git(command);
   }
@@ -290,7 +353,7 @@ public class Worker implements Runnable {
     Stats stats = new Stats();
 
     String localRef = git("rev-parse", branchName);
-    String remoteRef = git("rev-parse", upstream.remoteRef);
+    String remoteRef = git("rev-parse", upstream.getRemoteRef());
 
     stats.commitsBehind = Integer.parseInt(
         git("rev-list", "--count", String.format("%s..%s", localRef, remoteRef))
@@ -303,43 +366,49 @@ public class Worker implements Runnable {
     if (headCommitRef.equals(localRef)) {
       String status = git("status", "--porcelain");
 
-      for (String line : status.split("\n")) {
-        char index = line.charAt(0);
-        char workTree = line.charAt(1);
+      Arrays.asList(status.split("\n"))
+          .parallelStream()
+          .map(String::trim)
+          .filter(StringUtils::isNotEmpty)
+          .forEach(line -> {
+            char index = line.charAt(0);
+            char workTree = line.charAt(1);
 
-        updateStats(stats, index);
-        updateStats(stats, workTree);
-      }
+            updateStats(stats, index);
+            updateStats(stats, workTree);
+          });
     }
 
     branchStats.put(branchName, stats);
   }
 
   private void updateStats(Stats stats, char status) {
-    switch (status) {
-      case 'M':
-        stats.modified++;
-        break;
+    synchronized (stats) {
+      switch (status) {
+        case 'M':
+          stats.modified++;
+          break;
 
-      case 'A':
-        stats.added++;
-        break;
+        case 'A':
+          stats.added++;
+          break;
 
-      case 'D':
-        stats.deleted++;
-        break;
+        case 'D':
+          stats.deleted++;
+          break;
 
-      case 'R':
-        stats.renamed++;
-        break;
+        case 'R':
+          stats.renamed++;
+          break;
 
-      case 'C':
-        stats.copied++;
-        break;
+        case 'C':
+          stats.copied++;
+          break;
 
-      case 'U':
-        stats.unmerged++;
-        break;
+        case 'U':
+          stats.unmerged++;
+          break;
+      }
     }
   }
 
@@ -347,27 +416,50 @@ public class Worker implements Runnable {
    * Update all branches.
    */
   private void updateBranches() throws GitProcessException {
+    if (!updateExisting) {
+      return;
+    }
+
     for (String branchName : localBranchNames) {
       updateBranch(branchName);
     }
   }
 
   private void updateBranch(String branchName) throws GitProcessException {
+    if (!updateExisting) {
+      return;
+    }
+
     Upstream upstream = branchUpstreamMap.get(branchName);
 
-    if (!determineUpstreamIsAvailable(upstream)) {
+    if (null == upstream) {
       branchUpdateStatus.put(branchName, Update.SKIP_NO_UPSTREAM);
+      return;
+    }
+
+    if (!determineUpstreamIsAvailable(upstream)) {
+      branchUpdateStatus.put(branchName, Update.SKIP_UPSTREAM_DELETED);
       return;
     }
 
     activity(Action.CHECKOUT, "checkout branch {}", branchName);
     git("checkout", branchName);
 
-    if (upstream.rebase) {
-      activity(Action.REBASE, "rebase onto {}", upstream.remoteRef);
+    String fromIsh = git("rev-parse", branchName);
+    String toIsh = git("rev-parse", upstream.getRemoteRef());
+
+    if (StringUtils.equals(fromIsh, toIsh)) {
+      branchUpdateStatus.put(branchName, Update.UP_TO_DATE);
+      return;
+    }
+
+    branchUpdateIsh.put(branchName, new FromToIsh(fromIsh, toIsh));
+
+    if (upstream.isRebase()) {
+      activity(Action.REBASE, "rebase onto {}", upstream.getRemoteRef());
 
       try {
-        git("rebase", upstream.remoteRef);
+        git("rebase", upstream.getRemoteRef());
         branchUpdateStatus.put(branchName, Update.REBASED);
       } catch (GitProcessException exception) {
         activity(Action.REBASE_ABORT, "rebase aborted");
@@ -375,11 +467,11 @@ public class Worker implements Runnable {
         branchUpdateStatus.put(branchName, Update.SKIP_CONFLICTING);
       }
     } else {
-      activity(Action.MERGE, "merge branch {}", upstream.remoteRef);
+      activity(Action.MERGE, "merge branch {}", upstream.getRemoteRef());
 
       try {
-        git("merge", "--ff-only", upstream.remoteRef);
-        branchUpdateStatus.put(branchName, Update.MERGED);
+        git("merge", "--ff-only", upstream.getRemoteRef());
+        branchUpdateStatus.put(branchName, Update.MERGED_FAST_FORWARD);
       } catch (GitProcessException exception) {
         activity(Action.MERGE_ABORT, "merge aborted");
         git("merge", "--abort");
@@ -399,9 +491,9 @@ public class Worker implements Runnable {
       return false;
     }
 
-    List<String> branchNames = remoteBranchNames.get(upstream.remoteName);
+    List<String> branchNames = remoteBranchNames.get(upstream.getRemoteName());
 
-    return null != branchNames && branchNames.contains(upstream.remoteBranch);
+    return null != branchNames && branchNames.contains(upstream.getRemoteBranch());
   }
 
   /**
@@ -500,7 +592,7 @@ public class Worker implements Runnable {
         .map(branch -> branch.split("/", 2))
         .collect(Collectors.toMap(
             chunks -> chunks[0],
-            chunks -> Collections.singletonList(chunks[1]),
+            chunks -> new LinkedList<>(Collections.singletonList(chunks[1])),
             (left, right) -> {
               left.addAll(right);
               return left;
@@ -508,29 +600,7 @@ public class Worker implements Runnable {
         ));
   }
 
-  public enum Update {
-    SKIP_NO_UPSTREAM,
-    SKIP_UPSTREAM_DELETED,
-    MERGED,
-    REBASED,
-    SKIP_CONFLICTING
-  }
-
-  private static class Upstream {
-    private final String remoteName;
-    private final String remoteBranch;
-    private final String remoteRef;
-    private final boolean rebase;
-
-    public Upstream(String remoteName, String remoteBranch, String remoteRef, boolean rebase) {
-      this.remoteName = remoteName;
-      this.rebase = rebase;
-      this.remoteBranch = remoteBranch;
-      this.remoteRef = remoteRef;
-    }
-  }
-
-  private static class Stats {
+  public static class Stats {
     private int commitsBehind = 0;
     private int commitsAhead = 0;
     private int added = 0;
@@ -539,9 +609,47 @@ public class Worker implements Runnable {
     private int copied = 0;
     private int deleted = 0;
     private int unmerged = 0;
-  }
 
-  private class GitProcessException extends Exception {
+    public int getCommitsBehind() {
+      return commitsBehind;
+    }
+
+    public int getCommitsAhead() {
+      return commitsAhead;
+    }
+
+    public int getAdded() {
+      return added;
+    }
+
+    public int getModified() {
+      return modified;
+    }
+
+    public int getRenamed() {
+      return renamed;
+    }
+
+    public int getCopied() {
+      return copied;
+    }
+
+    public int getDeleted() {
+      return deleted;
+    }
+
+    public int getUnmerged() {
+      return unmerged;
+    }
+
+    public boolean isClean() {
+      return 0 == added
+          && 0 == modified
+          && 0 == renamed
+          && 0 == copied
+          && 0 == deleted
+          && 0 == unmerged;
+    }
   }
 
 }

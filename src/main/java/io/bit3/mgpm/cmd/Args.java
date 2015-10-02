@@ -1,7 +1,5 @@
 package io.bit3.mgpm.cmd;
 
-import org.slf4j.spi.LocationAwareLogger;
-
 import java.io.File;
 
 public class Args {
@@ -11,7 +9,7 @@ public class Args {
   private boolean doStat = false;
   private boolean doUpdate = false;
   private boolean showGui = false;
-  private String loggerLevel = "trace";
+  private LogLevel loggerLevel = LogLevel.TRACE;
 
   public boolean hasConfig() {
     return null != config;
@@ -65,11 +63,11 @@ public class Args {
     this.showGui = showGui;
   }
 
-  public String getLoggerLevel() {
+  public LogLevel getLoggerLevel() {
     return loggerLevel;
   }
 
-  public void setLoggerLevel(String loggerLevel) {
+  public void setLoggerLevel(LogLevel loggerLevel) {
     this.loggerLevel = loggerLevel;
   }
 }

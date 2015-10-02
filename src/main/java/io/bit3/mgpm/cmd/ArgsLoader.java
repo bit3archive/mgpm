@@ -58,13 +58,13 @@ public class ArgsLoader {
       }
 
       if (cmd.hasOption(OptionsFactory.VERY_VERBOSE_OPT)) {
-        args.setLoggerLevel("debug");
+        args.setLoggerLevel(LogLevel.DEBUG);
       } else if (cmd.hasOption(OptionsFactory.VERBOSE_OPT)) {
-        args.setLoggerLevel("info");
+        args.setLoggerLevel(LogLevel.INFO);
       } else if (cmd.hasOption(OptionsFactory.QUIET_OPT)) {
-        args.setLoggerLevel("error");
+        args.setLoggerLevel(LogLevel.ERROR);
       } else {
-        args.setLoggerLevel("warn");
+        args.setLoggerLevel(LogLevel.WARN);
       }
 
       return args;

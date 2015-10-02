@@ -1,5 +1,11 @@
 package io.bit3.mgpm.config.parser;
 
+import static io.bit3.mgpm.config.parser.Asserts.assertIsBoolean;
+import static io.bit3.mgpm.config.parser.Asserts.assertIsList;
+import static io.bit3.mgpm.config.parser.Asserts.assertIsMap;
+import static io.bit3.mgpm.config.parser.Asserts.assertIsString;
+import static io.bit3.mgpm.config.parser.Asserts.assertNotEmpty;
+
 import io.bit3.mgpm.config.Config;
 import io.bit3.mgpm.config.GitConfig;
 import io.bit3.mgpm.config.GithubConfig;
@@ -11,7 +17,6 @@ import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.client.GitHubClient;
 import org.eclipse.egit.github.core.service.RepositoryService;
 import org.gitlab.api.GitlabAPI;
-import org.gitlab.api.models.GitlabNamespace;
 import org.gitlab.api.models.GitlabProject;
 import org.yaml.snakeyaml.constructor.AbstractConstruct;
 import org.yaml.snakeyaml.constructor.Constructor;
@@ -21,14 +26,11 @@ import org.yaml.snakeyaml.nodes.NodeId;
 import org.yaml.snakeyaml.nodes.Tag;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static io.bit3.mgpm.config.parser.Asserts.*;
 
 public class ConfigConstructor extends Constructor {
   private final Config config;
