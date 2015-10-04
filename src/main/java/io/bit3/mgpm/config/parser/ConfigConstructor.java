@@ -115,7 +115,7 @@ public class ConfigConstructor extends Constructor {
       List<Repository> repositories = fetchGithubRepositories(config, owner, namePattern);
 
       for (Repository repository : repositories) {
-        String url = repository.getCloneUrl();
+        String url = repository.getSshUrl();
 
         config.getRepositories().add(new RepositoryConfig(repository.getName(), url, Strategy.HEAD));
       }
