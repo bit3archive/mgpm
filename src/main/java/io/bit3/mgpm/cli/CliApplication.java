@@ -13,6 +13,11 @@ import io.bit3.mgpm.worker.Worker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.net.URI;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,6 +26,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class CliApplication {
   private final Logger logger = LoggerFactory.getLogger(CliApplication.class);
@@ -41,10 +47,14 @@ public class CliApplication {
   }
 
   public void run() {
+    List<File> knownDirectories = new LinkedList<>();
+
     int cores = Runtime.getRuntime().availableProcessors();
     ExecutorService executor = Executors.newFixedThreadPool(2 * cores);
 
     for (final RepositoryConfig repositoryConfig : config.getRepositories()) {
+      knownDirectories.add(repositoryConfig.getDirectory());
+
       Worker worker = new Worker(config, repositoryConfig, args.isDoInit(), args.isDoUpdate());
       worker.registerObserver(new LoggingWorkerObserver(args, output, repositoryPadding));
       worker.registerObserver(new CliWorkerObserver());
@@ -62,6 +72,40 @@ public class CliApplication {
       } catch (InterruptedException e) {
         break;
       }
+    }
+
+    output.deleteSpinner();
+
+    if (args.isShowStatus()) {
+      printSuperfluousDirectories(knownDirectories);
+    }
+  }
+
+  private void printSuperfluousDirectories(List<File> knownDirectories) {
+    Set<File> parentDirectories = knownDirectories
+        .stream()
+        .map(File::getParentFile)
+        .collect(Collectors.toCollection(TreeSet::new));
+    Set<File> seenFiles = new TreeSet<>();
+
+    for (File parentDirectory : parentDirectories) {
+      File[] files = parentDirectory.listFiles();
+      if (null != files)
+        Collections.addAll(seenFiles, files);
+    }
+
+    seenFiles.removeAll(knownDirectories);
+
+    URI workingDirectory = Paths.get(".").toAbsolutePath().normalize().toUri();
+    for (File file : seenFiles) {
+      String relativePath = workingDirectory.relativize(file.toURI()).getPath();
+      relativePath = relativePath.replaceFirst("/$", "");
+      output
+          .print(" * ")
+          .print(Color.YELLOW, relativePath)
+          .print(" ")
+          .print(Color.RED, "superfluous")
+          .println();
     }
   }
 
