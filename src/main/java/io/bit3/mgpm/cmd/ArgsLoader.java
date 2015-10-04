@@ -42,7 +42,7 @@ public class ArgsLoader {
       }
 
       if (cmd.hasOption(OptionsFactory.STAT_OPT)) {
-        args.setDoStat(true);
+        args.setShowStatus(true);
       }
 
       if (cmd.hasOption(OptionsFactory.UPDATE_OPT)) {

@@ -5,8 +5,8 @@ import java.io.File;
 public class Args {
   private File config = null;
   private boolean doInit = false;
-  private boolean doStat = false;
   private boolean doUpdate = false;
+  private boolean showStatus = false;
   private boolean showGui = false;
   private LogLevel loggerLevel = LogLevel.TRACE;
 
@@ -30,20 +30,20 @@ public class Args {
     this.doInit = doInit;
   }
 
-  public boolean isDoStat() {
-    return doStat;
-  }
-
-  public void setDoStat(boolean doStat) {
-    this.doStat = doStat;
-  }
-
   public boolean isDoUpdate() {
     return doUpdate;
   }
 
   public void setDoUpdate(boolean doUpdate) {
     this.doUpdate = doUpdate;
+  }
+
+  public boolean isShowStatus() {
+    return showStatus;
+  }
+
+  public void setShowStatus(boolean showStatus) {
+    this.showStatus = showStatus;
   }
 
   public boolean isShowGui() {

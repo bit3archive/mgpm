@@ -34,7 +34,7 @@ public class OptionsFactory {
     options.addOption(createHelpOption());
     options.addOption(createConfigOption());
     options.addOption(createInitOption());
-    options.addOption(createStatOption());
+    options.addOption(createStatusOption());
     options.addOption(createUpdateOption());
     options.addOption(createGuiOption());
     options.addOption(createQuietOption());
@@ -69,16 +69,16 @@ public class OptionsFactory {
         Character.toString(INIT_OPT),
         INIT_LONG_OPT,
         false,
-        "Init all (missing) repositories."
+        "Init/Clone all (missing) repositories."
     );
   }
 
-  private Option createStatOption() {
+  private Option createStatusOption() {
     return new Option(
         Character.toString(STAT_OPT),
         STAT_LONG_OPT,
         false,
-        "Show stats of all repositories."
+        "Show detailed status of all branches, even remote ones."
     );
   }
 
