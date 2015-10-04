@@ -190,6 +190,11 @@ public class Worker implements Runnable {
       return false;
     }
 
+    if (!directory.mkdirs()) {
+      activity(Action.ABORT, "could not create directory");
+      return false;
+    }
+
     git(directory.getParentFile(), "clone", repositoryConfig.getUrl(), directory.toString());
     git("submodule", "init");
     git("submodule", "update");

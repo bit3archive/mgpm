@@ -13,6 +13,7 @@ import io.bit3.mgpm.config.InvalidConfigException;
 import io.bit3.mgpm.config.RepositoryConfig;
 import io.bit3.mgpm.config.Strategy;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.client.GitHubClient;
 import org.eclipse.egit.github.core.service.RepositoryService;
@@ -25,7 +26,9 @@ import org.yaml.snakeyaml.nodes.Node;
 import org.yaml.snakeyaml.nodes.NodeId;
 import org.yaml.snakeyaml.nodes.Tag;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -105,19 +108,47 @@ public class ConfigConstructor extends Constructor {
     private void configureGitRepository(Config config, int repositoryIndex, Map<Object, Object> map) {
       String url = castRepositoryUrlValue(map.get("url"), repositoryIndex);
       String name = castRepositoryNameValue(map.get("name"), repositoryIndex);
+      String path = castGithubPathValue(map.get("path"), repositoryIndex);
 
-      config.getRepositories().add(new RepositoryConfig(name, url, Strategy.HEAD));
+      File parentDir = new File(Paths.get(".").toAbsolutePath().normalize().toString());
+      if (StringUtils.isNotEmpty(path)) {
+        parentDir = new File(parentDir, path);
+      }
+      File directory = new File(parentDir, name);
+
+      RepositoryConfig repositoryConfig = new RepositoryConfig(
+          name,
+          url,
+          Strategy.HEAD,
+          directory
+      );
+      config.getRepositories().add(repositoryConfig);
     }
 
     private void configureGithubRepositories(Config config, int repositoryIndex, Map<Object, Object> map) {
       String owner = castGithubRepositoryOwnerValue(map.get("owner"), repositoryIndex);
       String namePattern = castGithubRepositoryNamesPatternValue(map.get("name"), repositoryIndex);
+      String path = castGithubPathValue(map.get("path"), repositoryIndex);
+
       List<Repository> repositories = fetchGithubRepositories(config, owner, namePattern);
 
-      for (Repository repository : repositories) {
-        String url = repository.getSshUrl();
+      File parentDir = new File(Paths.get(".").toAbsolutePath().normalize().toString());
+      if (StringUtils.isNotEmpty(path)) {
+        parentDir = new File(parentDir, path);
+      }
 
-        config.getRepositories().add(new RepositoryConfig(repository.getName(), url, Strategy.HEAD));
+      for (Repository repository : repositories) {
+        String repositoryName = repository.getName();
+        String url = repository.getSshUrl();
+        File projectDirectory = new File(parentDir, repositoryName);
+        RepositoryConfig repositoryConfig = new RepositoryConfig(
+            repositoryName,
+            url,
+            Strategy.HEAD,
+            projectDirectory
+        );
+
+        config.getRepositories().add(repositoryConfig);
       }
     }
 
@@ -153,11 +184,17 @@ public class ConfigConstructor extends Constructor {
       String namespace = castGitlabRepositoryNamespaceValue(map.get("namespace"), repositoryIndex);
       String projectPattern = castGitlabRepositoryProjectPatternValue(map.get("name"), repositoryIndex);
       boolean includeArchived = castGitlabRepositoryArchivedValue(map.get("archived"), repositoryIndex);
+      String path = castGitlabPathValue(map.get("path"), repositoryIndex);
 
       List<GitlabProject> projects = fetchGitlabProjects(
           config, hostUrl, token, namespace, projectPattern);
 
       projects.sort((p1, p2) -> p1.getName().compareToIgnoreCase(p2.getName()));
+
+      File parentDir = new File(Paths.get(".").toAbsolutePath().normalize().toString());
+      if (StringUtils.isNotEmpty(path)) {
+        parentDir = new File(parentDir, path);
+      }
 
       for (GitlabProject project : projects) {
         // skip archived projects
@@ -165,9 +202,18 @@ public class ConfigConstructor extends Constructor {
           continue;
         }
 
+        String projectName = project.getName();
         String url = project.getSshUrl();
+        String projectPathFragment = project.getPath();
+        File projectDirectory = new File(parentDir, projectPathFragment);
+        RepositoryConfig repositoryConfig = new RepositoryConfig(
+            projectName,
+            url,
+            Strategy.HEAD,
+            projectDirectory
+        );
 
-        config.getRepositories().add(new RepositoryConfig(project.getPath(), url, Strategy.HEAD));
+        config.getRepositories().add(repositoryConfig);
       }
     }
 
@@ -294,6 +340,16 @@ public class ConfigConstructor extends Constructor {
       return (String) object;
     }
 
+    private String castGithubPathValue(Object object, int repositoryIndex) {
+      if (null == object) {
+        object = "";
+      }
+
+      assertIsString(object, "repsitories[%d].path must be a string", repositoryIndex);
+
+      return (String) object;
+    }
+
     private String castGitlabRepositoryHostUrlValue(Object object, int repositoryIndex) {
       assertNotEmpty(object, "repsitories[%d].url must not be empty", repositoryIndex);
       assertIsString(object, "repsitories[%d].url must be a string", repositoryIndex);
@@ -333,6 +389,16 @@ public class ConfigConstructor extends Constructor {
       assertIsBoolean(object, "repsitories[%d].project must be a boolean", repositoryIndex);
 
       return (Boolean) object;
+    }
+
+    private String castGitlabPathValue(Object object, int repositoryIndex) {
+      if (null == object) {
+        object = "";
+      }
+
+      assertIsString(object, "repsitories[%d].path must be a string", repositoryIndex);
+
+      return (String) object;
     }
   }
 }
