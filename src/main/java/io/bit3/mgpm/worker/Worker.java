@@ -563,12 +563,12 @@ public class Worker implements Runnable {
             error
         );
 
-        throw new RuntimeException(message);
+        throw new GitProcessException(message);
       }
 
       return IOUtils.toString(process.getInputStream()).replaceAll("\\s+$", "");
     } catch (IOException | InterruptedException e) {
-      throw new RuntimeException(e);
+      throw new GitProcessException(e);
     }
   }
 
