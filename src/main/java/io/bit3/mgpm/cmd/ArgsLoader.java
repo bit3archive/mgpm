@@ -37,10 +37,6 @@ public class ArgsLoader {
         args.setConfig(new File(cmd.getOptionValue('c')));
       }
 
-      if (cmd.hasOption(OptionsFactory.LIST_OPT)) {
-        args.setDoList(true);
-      }
-
       if (cmd.hasOption(OptionsFactory.INIT_OPT)) {
         args.setDoInit(true);
       }

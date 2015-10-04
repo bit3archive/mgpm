@@ -4,7 +4,6 @@ import java.io.File;
 
 public class Args {
   private File config = null;
-  private boolean doList = false;
   private boolean doInit = false;
   private boolean doStat = false;
   private boolean doUpdate = false;
@@ -21,14 +20,6 @@ public class Args {
 
   public void setConfig(File config) {
     this.config = config;
-  }
-
-  public boolean isDoList() {
-    return doList;
-  }
-
-  public void setDoList(boolean doList) {
-    this.doList = doList;
   }
 
   public boolean isDoInit() {

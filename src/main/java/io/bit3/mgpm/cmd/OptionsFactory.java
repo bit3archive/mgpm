@@ -10,9 +10,6 @@ public class OptionsFactory {
   public static final char CONFIG_OPT = 'c';
   public static final String CONFIG_LONG_OPT = "config";
 
-  public static final char LIST_OPT = 'l';
-  public static final String LIST_LONG_OPT = "list";
-
   public static final char INIT_OPT = 'i';
   public static final String INIT_LONG_OPT = "init";
 
@@ -36,7 +33,6 @@ public class OptionsFactory {
 
     options.addOption(createHelpOption());
     options.addOption(createConfigOption());
-    options.addOption(createListOption());
     options.addOption(createInitOption());
     options.addOption(createStatOption());
     options.addOption(createUpdateOption());
@@ -66,15 +62,6 @@ public class OptionsFactory {
     );
     option.setArgName("path");
     return option;
-  }
-
-  private Option createListOption() {
-    return new Option(
-        Character.toString(LIST_OPT),
-        LIST_LONG_OPT,
-        false,
-        "List configured repositories."
-    );
   }
 
   private Option createInitOption() {
