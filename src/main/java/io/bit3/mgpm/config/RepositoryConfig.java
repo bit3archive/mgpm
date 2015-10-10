@@ -12,6 +12,14 @@ public class RepositoryConfig {
   public RepositoryConfig(String name, String url, Strategy strategy) {
     this.name = name;
     this.url = url;
+    this.strategy = strategy;
+  }
+
+  public RepositoryConfig(String name, String url, Strategy strategy, File directory) {
+    this.name = name;
+    this.url = url;
+    this.strategy = strategy;
+    this.directory = directory;
   }
 
   public String getName() {

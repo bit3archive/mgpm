@@ -190,6 +190,11 @@ public class Worker implements Runnable {
       return false;
     }
 
+    if (!directory.mkdirs()) {
+      activity(Action.ABORT, "could not create directory");
+      return false;
+    }
+
     git(directory.getParentFile(), "clone", repositoryConfig.getUrl(), directory.toString());
     git("submodule", "init");
     git("submodule", "update");
@@ -563,12 +568,12 @@ public class Worker implements Runnable {
             error
         );
 
-        throw new RuntimeException(message);
+        throw new GitProcessException(message);
       }
 
       return IOUtils.toString(process.getInputStream()).replaceAll("\\s+$", "");
     } catch (IOException | InterruptedException e) {
-      throw new RuntimeException(e);
+      throw new GitProcessException(e);
     }
   }
 

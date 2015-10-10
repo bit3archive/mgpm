@@ -10,9 +10,6 @@ public class OptionsFactory {
   public static final char CONFIG_OPT = 'c';
   public static final String CONFIG_LONG_OPT = "config";
 
-  public static final char LIST_OPT = 'l';
-  public static final String LIST_LONG_OPT = "list";
-
   public static final char INIT_OPT = 'i';
   public static final String INIT_LONG_OPT = "init";
 
@@ -36,9 +33,8 @@ public class OptionsFactory {
 
     options.addOption(createHelpOption());
     options.addOption(createConfigOption());
-    options.addOption(createListOption());
     options.addOption(createInitOption());
-    options.addOption(createStatOption());
+    options.addOption(createStatusOption());
     options.addOption(createUpdateOption());
     options.addOption(createGuiOption());
     options.addOption(createQuietOption());
@@ -68,30 +64,21 @@ public class OptionsFactory {
     return option;
   }
 
-  private Option createListOption() {
-    return new Option(
-        Character.toString(LIST_OPT),
-        LIST_LONG_OPT,
-        false,
-        "List configured repositories."
-    );
-  }
-
   private Option createInitOption() {
     return new Option(
         Character.toString(INIT_OPT),
         INIT_LONG_OPT,
         false,
-        "Init all (missing) repositories."
+        "Init/Clone all (missing) repositories."
     );
   }
 
-  private Option createStatOption() {
+  private Option createStatusOption() {
     return new Option(
         Character.toString(STAT_OPT),
         STAT_LONG_OPT,
         false,
-        "Show stats of all repositories."
+        "Show detailed status of all branches, even remote ones."
     );
   }
 
