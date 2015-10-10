@@ -551,6 +551,7 @@ public class Worker implements Runnable {
           .directory(directory)
           .command(command)
           .start();
+      process.getOutputStream().close();
       int exitCode = process.waitFor();
 
       if (0 != exitCode) {
