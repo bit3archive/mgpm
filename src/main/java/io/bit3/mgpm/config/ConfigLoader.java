@@ -10,13 +10,13 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 
 public class ConfigLoader {
-  public void load(Config config) {
+  public void load(Config config) throws FileNotFoundException {
     load(config, new File("mgpm.yml"));
   }
 
-  public void load(Config config, File file) {
+  public void load(Config config, File file) throws FileNotFoundException {
     if (!file.exists()) {
-      return;
+      throw new FileNotFoundException("Could not find configuration file " + file.getPath());
     }
 
     if (!file.isFile()) {

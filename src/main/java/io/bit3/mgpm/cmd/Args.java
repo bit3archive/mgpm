@@ -8,6 +8,7 @@ public class Args {
   private boolean doUpdate = false;
   private boolean showStatus = false;
   private boolean showGui = false;
+  private int threads = 2 * Runtime.getRuntime().availableProcessors();
   private LogLevel loggerLevel = LogLevel.TRACE;
 
   public boolean hasConfig() {
@@ -52,6 +53,14 @@ public class Args {
 
   public void setShowGui(boolean showGui) {
     this.showGui = showGui;
+  }
+
+  public int getThreads() {
+    return threads;
+  }
+
+  public void setThreads(int threads) {
+    this.threads = threads;
   }
 
   public LogLevel getLoggerLevel() {

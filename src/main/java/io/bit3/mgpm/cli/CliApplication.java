@@ -4,6 +4,7 @@ import io.bit3.mgpm.cmd.Args;
 import io.bit3.mgpm.config.Config;
 import io.bit3.mgpm.config.RepositoryConfig;
 import io.bit3.mgpm.worker.AbstractWorkerObserver;
+import io.bit3.mgpm.worker.Activity;
 import io.bit3.mgpm.worker.FromToIsh;
 import io.bit3.mgpm.worker.LoggingWorkerObserver;
 import io.bit3.mgpm.worker.Update;
@@ -16,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.net.URI;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -33,30 +33,23 @@ public class CliApplication {
   private final Args args;
   private final Config config;
   private final AnsiOutput output;
-  private final int repositoryPadding;
 
   public CliApplication(Args args, Config config) {
     this.args = args;
     this.config = config;
     this.output = AnsiOutput.getInstance();
-    this.repositoryPadding = config.getRepositories()
-        .stream()
-        .mapToInt(r -> r.getName().length())
-        .max()
-        .getAsInt();
   }
 
   public void run() {
     List<File> knownDirectories = new LinkedList<>();
 
-    int cores = Runtime.getRuntime().availableProcessors();
-    ExecutorService executor = Executors.newFixedThreadPool(2 * cores);
+    ExecutorService executor = Executors.newFixedThreadPool(args.getThreads());
 
     for (final RepositoryConfig repositoryConfig : config.getRepositories()) {
       knownDirectories.add(repositoryConfig.getDirectory());
 
       Worker worker = new Worker(config, repositoryConfig, args.isDoInit(), args.isDoUpdate());
-      worker.registerObserver(new LoggingWorkerObserver(args, output, repositoryPadding));
+      worker.registerObserver(new LoggingWorkerObserver(output));
       worker.registerObserver(new CliWorkerObserver());
       executor.submit(worker);
     }
@@ -111,7 +104,19 @@ public class CliApplication {
 
   private class CliWorkerObserver extends AbstractWorkerObserver {
     @Override
+    public void start(Worker worker) {
+      output.addActiveWorker(worker.getRepositoryConfig().getPathName(), "...");
+    }
+
+    @Override
+    public void activity(Activity activity, Worker worker) {
+      output.addActiveWorker(worker.getRepositoryConfig().getPathName(), activity.getMessage());
+    }
+
+    @Override
     public void end(Worker worker) {
+      output.removeActiveWorker(worker.getRepositoryConfig().getPathName());
+
       try {
         List<String> localBranchNames = worker.getLocalBranchNames();
         Map<String, List<String>> remoteBranchNames = worker.getRemoteBranchNames();
@@ -136,7 +141,7 @@ public class CliApplication {
 
           output
               .print(" * ")
-              .print(Color.YELLOW, worker.getRepositoryConfig().getName())
+              .print(Color.YELLOW, worker.getRepositoryConfig().getPathName())
               .println();
 
           for (String branchName : localBranchNames) {

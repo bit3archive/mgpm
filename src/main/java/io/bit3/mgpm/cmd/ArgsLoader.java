@@ -49,6 +49,19 @@ public class ArgsLoader {
         args.setDoUpdate(true);
       }
 
+      if (cmd.hasOption(OptionsFactory.THREADS_OPT)) {
+        String value = cmd.getOptionValue(OptionsFactory.THREADS_OPT);
+        if (!value.matches("\\d*[1-9]\\d*")) {
+          System.err.println("Option --threads must be a positive number, skipping.");
+        } else {
+          args.setThreads(Integer.parseInt(value));
+        }
+      }
+
+      if (cmd.hasOption(OptionsFactory.NO_THREADS_OPT)) {
+        args.setThreads(1);
+      }
+
       if (cmd.hasOption(OptionsFactory.GUI_OPT)) {
         args.setShowGui(true);
       }
