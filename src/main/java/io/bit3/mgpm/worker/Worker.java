@@ -518,7 +518,7 @@ public class Worker implements Runnable {
    */
   private void activity(Action action, String message, Object... arguments) {
     message = MessageFormatter.arrayFormat(message, arguments).getMessage();
-    logger.info("[{}] {}: {}", repositoryConfig.getName(), action, message);
+    logger.info("[{}] {}: {}", repositoryConfig.getPathName(), action, message);
     Activity activity = new Activity(action, message);
     journal.add(activity);
 

@@ -2,23 +2,16 @@ package io.bit3.mgpm.worker;
 
 import io.bit3.mgpm.cli.AnsiOutput;
 import io.bit3.mgpm.cli.Color;
-import io.bit3.mgpm.cmd.Args;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LoggingWorkerObserver extends AbstractWorkerObserver {
   private final Logger logger = LoggerFactory.getLogger(LoggingWorkerObserver.class);
-  private final Args args;
   private final AnsiOutput output;
-  private final int repositoryPadding;
-  private final String printPattern;
 
-  public LoggingWorkerObserver(Args args, AnsiOutput output, int repositoryPadding) {
-    this.args = args;
+  public LoggingWorkerObserver(AnsiOutput output) {
     this.output = output;
-    this.repositoryPadding = repositoryPadding;
-    printPattern = "%" + repositoryPadding + "s";
   }
 
   @Override
@@ -58,7 +51,7 @@ public class LoggingWorkerObserver extends AbstractWorkerObserver {
     synchronized (output) {
       output
           .print("[LOG] ")
-          .print(printPattern, worker.getRepositoryConfig().getName())
+          .print(worker.getRepositoryConfig().getPathName())
           .print(Color.YELLOW, " [%s] ", activity.getAction().toString())
           .print(activity.getMessage())
           .println();

@@ -117,6 +117,7 @@ public class ConfigConstructor extends Constructor {
       File directory = new File(parentDir, name);
 
       RepositoryConfig repositoryConfig = new RepositoryConfig(
+          path,
           name,
           url,
           Strategy.HEAD,
@@ -142,6 +143,7 @@ public class ConfigConstructor extends Constructor {
         String url = repository.getSshUrl();
         File projectDirectory = new File(parentDir, repositoryName);
         RepositoryConfig repositoryConfig = new RepositoryConfig(
+            path,
             repositoryName,
             url,
             Strategy.HEAD,
@@ -207,6 +209,7 @@ public class ConfigConstructor extends Constructor {
         String projectPathFragment = project.getPath();
         File projectDirectory = new File(parentDir, projectPathFragment);
         RepositoryConfig repositoryConfig = new RepositoryConfig(
+            path,
             projectName,
             url,
             Strategy.HEAD,

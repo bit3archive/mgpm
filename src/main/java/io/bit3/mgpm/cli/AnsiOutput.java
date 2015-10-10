@@ -3,6 +3,10 @@ package io.bit3.mgpm.cli;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.PrintStream;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 import jnr.posix.POSIX;
 import jnr.posix.POSIXFactory;
@@ -30,8 +34,9 @@ public class AnsiOutput {
     instance = new AnsiOutput();
   }
 
+  private Map<String, String> activeWorkers = new LinkedHashMap<>();
   private int spinnerIndex = 0;
-  private boolean spinnerPrinted = false;
+  private int writtenLines = 0;
 
   private AnsiOutput() {
   }
@@ -107,25 +112,56 @@ public class AnsiOutput {
     return this;
   }
 
-  public AnsiOutput rotateSpinner() {
-    if (!DECORATED) {
+  public synchronized void addActiveWorker(String label, String activity) {
+    activeWorkers.put(label, activity);
+  }
+
+  public synchronized void removeActiveWorker(String label) {
+    activeWorkers.remove(label);
+  }
+
+  public synchronized AnsiOutput rotateSpinner() {
+    deleteSpinner();
+
+    if (!DECORATED || activeWorkers.isEmpty()) {
       return this;
     }
 
-    deleteSpinner();
-    out.print(spinnerCharacters[spinnerIndex]);
+    int localSpinnerIndex = spinnerIndex;
+    for (Map.Entry<String, String> entry : activeWorkers.entrySet()) {
+      String label = entry.getKey();
+      String activity = entry.getValue();
+
+      out.print(" (");
+      out.print(spinnerCharacters[localSpinnerIndex]);
+      out.print(") ");
+      out.print(label);
+      out.print(": ");
+      out.println(activity);
+
+      localSpinnerIndex = (localSpinnerIndex + 1) % spinnerCharacters.length;
+      writtenLines++;
+    }
+
     spinnerIndex = (spinnerIndex + 1) % spinnerCharacters.length;
-    spinnerPrinted = true;
 
     return this;
   }
 
-  public AnsiOutput deleteSpinner() {
-    if (!DECORATED || !spinnerPrinted) {
+  public synchronized AnsiOutput deleteSpinner() {
+    if (!DECORATED || 0 == writtenLines) {
       return this;
     }
 
-    out.write(BACKSPACE);
+    // restore cursor position
+    out.print(ESCAPE);
+    out.print("[" + writtenLines + "A"); // cursor up
+
+    // clear from cursor
+    out.print(ESCAPE);
+    out.print("[J"); // erase down
+
+    writtenLines = 0;
 
     return this;
   }
