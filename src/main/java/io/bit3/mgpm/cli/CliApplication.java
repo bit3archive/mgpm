@@ -43,8 +43,7 @@ public class CliApplication {
   public void run() {
     List<File> knownDirectories = new LinkedList<>();
 
-    int cores = Runtime.getRuntime().availableProcessors();
-    ExecutorService executor = Executors.newFixedThreadPool(2 * cores);
+    ExecutorService executor = Executors.newFixedThreadPool(args.getThreads());
 
     for (final RepositoryConfig repositoryConfig : config.getRepositories()) {
       knownDirectories.add(repositoryConfig.getDirectory());

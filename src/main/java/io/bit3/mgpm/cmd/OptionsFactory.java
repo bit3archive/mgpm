@@ -19,6 +19,12 @@ public class OptionsFactory {
   public static final char UPDATE_OPT = 'u';
   public static final String UPDATE_LONG_OPT = "update";
 
+  public static final char THREADS_OPT = 't';
+  public static final String THREADS_LONG_OPT = "threads";
+
+  public static final char NO_THREADS_OPT = 'T';
+  public static final String NO_THREADS_LONG_OPT = "no-threads";
+
   public static final char GUI_OPT = 'g';
   public static final String GUI_LONG_OPT = "gui";
 
@@ -36,6 +42,8 @@ public class OptionsFactory {
     options.addOption(createInitOption());
     options.addOption(createStatusOption());
     options.addOption(createUpdateOption());
+    options.addOption(createThreadsOption());
+    options.addOption(createNoThreadsOption());
     options.addOption(createGuiOption());
     options.addOption(createQuietOption());
     options.addOption(createVerboseOption());
@@ -88,6 +96,27 @@ public class OptionsFactory {
         UPDATE_LONG_OPT,
         false,
         "Update all repositories."
+    );
+  }
+
+  private Option createThreadsOption() {
+    return new Option(
+        Character.toString(THREADS_OPT),
+        THREADS_LONG_OPT,
+        true,
+        String.format(
+            "Use a given number of threads (default is %d; twice of your cpu cores)",
+            2 * Runtime.getRuntime().availableProcessors()
+        )
+    );
+  }
+
+  private Option createNoThreadsOption() {
+    return new Option(
+        Character.toString(NO_THREADS_OPT),
+        NO_THREADS_LONG_OPT,
+        false,
+        "Do not use threads (equivalent to --threads=1)"
     );
   }
 
