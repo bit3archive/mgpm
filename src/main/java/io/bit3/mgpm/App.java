@@ -8,12 +8,14 @@ import io.bit3.mgpm.config.Config;
 import io.bit3.mgpm.config.ConfigLoader;
 import io.bit3.mgpm.gui.GuiApplication;
 
+import java.io.FileNotFoundException;
+
 public class App {
   private final ConfigLoader loader;
   private final Args args;
   private final Config config = new Config();
 
-  public App(ConfigLoader loader, Args args) {
+  public App(ConfigLoader loader, Args args) throws FileNotFoundException {
     this.loader = loader;
     this.args = args;
 
@@ -34,12 +36,16 @@ public class App {
     System.setProperty("org.slf4j.simpleLogger.log.io.bit3.mgpm", args.getLoggerLevel().toString().toLowerCase());
 
     ConfigLoader configLoader = new ConfigLoader();
-    App app = new App(configLoader, args);
+    try {
+      App app = new App(configLoader, args);
 
-    if (args.isShowGui()) {
-      app.runGui();
-    } else {
-      app.runCli();
+      if (args.isShowGui()) {
+        app.runGui();
+      } else {
+        app.runCli();
+      }
+    } catch (FileNotFoundException e) {
+      System.err.println(e.getMessage());
     }
   }
 
