@@ -184,7 +184,7 @@ public class ConfigConstructor extends Constructor {
       String hostUrl = castGitlabRepositoryHostUrlValue(map.get("url"), repositoryIndex);
       String token = castGitlabRepositoryTokenValue(map.get("token"), repositoryIndex);
       String namespace = castGitlabRepositoryNamespaceValue(map.get("namespace"), repositoryIndex);
-      String projectPattern = castGitlabRepositoryProjectPatternValue(map.get("name"), repositoryIndex);
+      String projectPattern = castGitlabRepositoryProjectPatternValue(map.get("project"), repositoryIndex);
       boolean includeArchived = castGitlabRepositoryArchivedValue(map.get("archived"), repositoryIndex);
       String path = castGitlabPathValue(map.get("path"), repositoryIndex);
 
