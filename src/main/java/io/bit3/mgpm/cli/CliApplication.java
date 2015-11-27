@@ -135,8 +135,22 @@ public class CliApplication {
 
         int padding = localBranchNames.stream().mapToInt(String::length).max().getAsInt();
         String pattern = "%-" + padding + "s";
+        boolean printDetails = true;
+
+        if (!logger.isInfoEnabled()) {
+          printDetails = !addedRemoteBranchNames.isEmpty()
+                  || !deletedRemoteBranchNames.isEmpty()
+                  || !branchStats.values().stream().map(Worker.Stats::isEmpty).reduce(true, (a, b) -> a && b);
+        } else if (!logger.isWarnEnabled()) {
+          // be quiet
+          return;
+        }
 
         synchronized (output) {
+          if (!printDetails) {
+            return;
+          }
+
           output.deleteSpinner();
 
           output

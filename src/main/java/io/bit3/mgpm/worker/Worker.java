@@ -518,7 +518,7 @@ public class Worker implements Runnable {
    */
   private void activity(Action action, String message, Object... arguments) {
     message = MessageFormatter.arrayFormat(message, arguments).getMessage();
-    logger.info("[{}] {}: {}", repositoryConfig.getPathName(), action, message);
+    logger.debug("[{}] {}: {}", repositoryConfig.getPathName(), action, message);
     Activity activity = new Activity(action, message);
     journal.add(activity);
 
@@ -648,6 +648,12 @@ public class Worker implements Runnable {
       return unmerged;
     }
 
+    public boolean isEmpty() {
+      return 0 == commitsBehind
+          && 0 == commitsAhead
+          && isClean();
+    }
+
     public boolean isClean() {
       return 0 == added
           && 0 == modified
@@ -657,5 +663,4 @@ public class Worker implements Runnable {
           && 0 == unmerged;
     }
   }
-
 }
