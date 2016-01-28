@@ -19,6 +19,9 @@ public class OptionsFactory {
   public static final char UPDATE_OPT = 'u';
   public static final String UPDATE_LONG_OPT = "update";
 
+  public static final char OMIT_SUPERFLUOUS_WARNINGS_OPT = 'S';
+  public static final String OMIT_SUPERFLUOUS_WARNINGS_LONG_OPT = "omit-superfluous-warnings";
+
   public static final char THREADS_OPT = 't';
   public static final String THREADS_LONG_OPT = "threads";
 
@@ -42,6 +45,7 @@ public class OptionsFactory {
     options.addOption(createInitOption());
     options.addOption(createStatusOption());
     options.addOption(createUpdateOption());
+    options.addOption(createOmitSuperfluousWarningsOption());
     options.addOption(createThreadsOption());
     options.addOption(createNoThreadsOption());
     options.addOption(createGuiOption());
@@ -96,6 +100,15 @@ public class OptionsFactory {
         UPDATE_LONG_OPT,
         false,
         "Update all repositories."
+    );
+  }
+
+  private Option createOmitSuperfluousWarningsOption() {
+    return new Option(
+        Character.toString(OMIT_SUPERFLUOUS_WARNINGS_OPT),
+        OMIT_SUPERFLUOUS_WARNINGS_LONG_OPT,
+        false,
+        "Omit superfluous warnings."
     );
   }
 

@@ -11,14 +11,7 @@ import org.slf4j.helpers.MessageFormatter;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Worker implements Runnable {
@@ -211,7 +204,12 @@ public class Worker implements Runnable {
       headSymbolicRef = git("symbolic-ref", "HEAD", "--short");
       headCommitRef = git("rev-parse", headSymbolicRef);
     } catch (GitProcessException e) {
-      headSymbolicRef = headCommitRef = git("rev-parse", "HEAD");
+      try {
+        headSymbolicRef = headCommitRef = git("rev-parse", "HEAD");
+      } catch (GitProcessException e2) {
+        // this is an empty repository without a HEAD
+        headSymbolicRef = headCommitRef =null;
+      }
     }
   }
 
@@ -368,7 +366,7 @@ public class Worker implements Runnable {
         git("rev-list", "--count", String.format("%s..%s", remoteRef, localRef))
     );
 
-    if (headCommitRef.equals(localRef)) {
+    if (Objects.equals(headCommitRef, localRef)) {
       String status = git("status", "--porcelain");
 
       Arrays.asList(status.split("\n"))
@@ -505,6 +503,10 @@ public class Worker implements Runnable {
    * Restore original HEAD state.
    */
   private void restoreHead() throws GitProcessException {
+    if (null == headSymbolicRef) {
+      return;
+    }
+
     activity(Action.RESTORE_HEAD, "restore {}", headSymbolicRef);
     git("checkout", headSymbolicRef);
   }
@@ -518,7 +520,7 @@ public class Worker implements Runnable {
    */
   private void activity(Action action, String message, Object... arguments) {
     message = MessageFormatter.arrayFormat(message, arguments).getMessage();
-    logger.info("[{}] {}: {}", repositoryConfig.getPathName(), action, message);
+    logger.debug("[{}] {}: {}", repositoryConfig.getPathName(), action, message);
     Activity activity = new Activity(action, message);
     journal.add(activity);
 
@@ -648,6 +650,12 @@ public class Worker implements Runnable {
       return unmerged;
     }
 
+    public boolean isEmpty() {
+      return 0 == commitsBehind
+          && 0 == commitsAhead
+          && isClean();
+    }
+
     public boolean isClean() {
       return 0 == added
           && 0 == modified
@@ -657,5 +665,4 @@ public class Worker implements Runnable {
           && 0 == unmerged;
     }
   }
-
 }

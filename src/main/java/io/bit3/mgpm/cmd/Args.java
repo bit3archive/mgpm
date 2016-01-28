@@ -8,6 +8,7 @@ public class Args {
   private boolean doUpdate = false;
   private boolean showStatus = false;
   private boolean showGui = false;
+  private boolean omitSuperfluousWarnings = false;
   private int threads = 2 * Runtime.getRuntime().availableProcessors();
   private LogLevel loggerLevel = LogLevel.TRACE;
 
@@ -53,6 +54,14 @@ public class Args {
 
   public void setShowGui(boolean showGui) {
     this.showGui = showGui;
+  }
+
+  public boolean isOmitSuperfluousWarnings() {
+    return omitSuperfluousWarnings;
+  }
+
+  public void setOmitSuperfluousWarnings(boolean omitSuperfluousWarnings) {
+    this.omitSuperfluousWarnings = omitSuperfluousWarnings;
   }
 
   public int getThreads() {

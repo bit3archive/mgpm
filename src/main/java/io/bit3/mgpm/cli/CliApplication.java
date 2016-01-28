@@ -69,7 +69,7 @@ public class CliApplication {
 
     output.deleteSpinner();
 
-    if (args.isShowStatus()) {
+    if (args.isShowStatus() && !args.isOmitSuperfluousWarnings()) {
       printSuperfluousDirectories(knownDirectories);
     }
   }
@@ -87,7 +87,11 @@ public class CliApplication {
         Collections.addAll(seenFiles, files);
     }
 
+    // remove known directories (=> directories with managed repositories) from seen files
     seenFiles.removeAll(knownDirectories);
+
+    // remove mgpm.yml from seen files
+    seenFiles = seenFiles.stream().filter(f -> !"mgpm.yml".equals(f.getName())).collect(Collectors.toSet());
 
     URI workingDirectory = Paths.get(".").toAbsolutePath().normalize().toUri();
     for (File file : seenFiles) {
@@ -135,8 +139,22 @@ public class CliApplication {
 
         int padding = localBranchNames.stream().mapToInt(String::length).max().getAsInt();
         String pattern = "%-" + padding + "s";
+        boolean printDetails = true;
+
+        if (!logger.isInfoEnabled()) {
+          printDetails = !addedRemoteBranchNames.isEmpty()
+                  || !deletedRemoteBranchNames.isEmpty()
+                  || !branchStats.values().stream().map(Worker.Stats::isEmpty).reduce(true, (a, b) -> a && b);
+        } else if (!logger.isWarnEnabled()) {
+          // be quiet
+          return;
+        }
 
         synchronized (output) {
+          if (!printDetails) {
+            return;
+          }
+
           output.deleteSpinner();
 
           output
