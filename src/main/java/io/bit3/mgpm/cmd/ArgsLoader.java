@@ -49,6 +49,10 @@ public class ArgsLoader {
         args.setDoUpdate(true);
       }
 
+      if (cmd.hasOption(OptionsFactory.OMIT_SUPERFLUOUS_WARNINGS_OPT)) {
+        args.setOmitSuperfluousWarnings(true);
+      }
+
       if (cmd.hasOption(OptionsFactory.THREADS_OPT)) {
         String value = cmd.getOptionValue(OptionsFactory.THREADS_OPT);
         if (!value.matches("\\d*[1-9]\\d*")) {

@@ -69,7 +69,7 @@ public class CliApplication {
 
     output.deleteSpinner();
 
-    if (args.isShowStatus()) {
+    if (args.isShowStatus() && !args.isOmitSuperfluousWarnings()) {
       printSuperfluousDirectories(knownDirectories);
     }
   }
