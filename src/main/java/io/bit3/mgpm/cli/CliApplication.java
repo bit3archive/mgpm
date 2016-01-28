@@ -87,7 +87,11 @@ public class CliApplication {
         Collections.addAll(seenFiles, files);
     }
 
+    // remove known directories (=> directories with managed repositories) from seen files
     seenFiles.removeAll(knownDirectories);
+
+    // remove mgpm.yml from seen files
+    seenFiles = seenFiles.stream().filter(f -> !"mgpm.yml".equals(f.getName())).collect(Collectors.toSet());
 
     URI workingDirectory = Paths.get(".").toAbsolutePath().normalize().toUri();
     for (File file : seenFiles) {
