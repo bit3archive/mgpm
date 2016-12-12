@@ -30,7 +30,7 @@ public class RepositoryConfig {
   public String getPathName() {
     return StringUtils.isEmpty(path)
         ? name
-        : path + " / " + name;
+        : path + "/" + name;
   }
 
   public String getPath() {

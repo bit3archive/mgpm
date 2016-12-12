@@ -1,10 +1,13 @@
 package io.bit3.mgpm.config.parser;
 
+import static io.bit3.mgpm.config.parser.Asserts.assertEndsWith;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsBoolean;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsList;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsMap;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsString;
 import static io.bit3.mgpm.config.parser.Asserts.assertNotEmpty;
+import static io.bit3.mgpm.config.parser.Asserts.assertStartsWith;
+import static io.bit3.mgpm.config.parser.Asserts.assertPath;
 
 import io.bit3.mgpm.config.Config;
 import io.bit3.mgpm.config.GitConfig;
@@ -19,6 +22,10 @@ import org.eclipse.egit.github.core.client.GitHubClient;
 import org.eclipse.egit.github.core.service.RepositoryService;
 import org.gitlab.api.GitlabAPI;
 import org.gitlab.api.models.GitlabProject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.yaml.snakeyaml.constructor.AbstractConstruct;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.nodes.MappingNode;
@@ -28,6 +35,8 @@ import org.yaml.snakeyaml.nodes.Tag;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -90,6 +99,11 @@ public class ConfigConstructor extends Constructor {
         return;
       }
 
+      if ("cgit".equals(type)) {
+        configureCgitRepositories(config, repositoryIndex, map);
+        return;
+      }
+
       if ("github".equals(type)) {
         configureGithubRepositories(config, repositoryIndex, map);
         return;
@@ -108,7 +122,7 @@ public class ConfigConstructor extends Constructor {
     private void configureGitRepository(Config config, int repositoryIndex, Map<Object, Object> map) {
       String url = castRepositoryUrlValue(map.get("url"), repositoryIndex);
       String name = castRepositoryNameValue(map.get("name"), repositoryIndex);
-      String path = castGithubPathValue(map.get("path"), repositoryIndex);
+      String path = castRepositoryPathValue(map.get("path"), repositoryIndex);
 
       File parentDir = new File(Paths.get(".").toAbsolutePath().normalize().toString());
       if (StringUtils.isNotEmpty(path)) {
@@ -124,6 +138,48 @@ public class ConfigConstructor extends Constructor {
           directory
       );
       config.getRepositories().add(repositoryConfig);
+    }
+
+    private void configureCgitRepositories(Config config, int repositoryIndex, Map<Object, Object> map) {
+      final URL baseUrl = castCgitBaseUrlValue(map.get("baseUrl"), repositoryIndex);
+      final String pathPrefix = castCgitPathPrefixValue(map.get("pathPrefix"), repositoryIndex);
+      final String sshUser = castCgitSshUserValue(map.get("sshUser"), repositoryIndex);
+      final String path = castCgitPathValue(map.get("path"), repositoryIndex);
+
+      File parentDir = new File(Paths.get(".").toAbsolutePath().normalize().toString());
+      if (StringUtils.isNotEmpty(path)) {
+        parentDir = new File(parentDir, path);
+      }
+
+      try {
+        Document doc = Jsoup.connect(baseUrl.toString()).get();
+        final Elements links = doc.select("td.sublevel-repo a[href^=\"" + pathPrefix + "\"]");
+
+        for (Element link : links) {
+          final String fullPath = link.attr("href").replaceFirst("/$", "");
+          final String localPath = fullPath.substring(pathPrefix.length()).replaceFirst("\\.git$", "");
+
+          String url = String.format(
+              "ssh://%s@%s%s",
+              sshUser,
+              baseUrl.getHost(),
+              Paths.get(baseUrl.getPath() + "/" + fullPath).normalize().toString()
+          );
+          File projectDirectory = Paths.get(parentDir.getAbsolutePath() + "/" + localPath).toAbsolutePath().normalize().toFile();
+
+          RepositoryConfig repositoryConfig = new RepositoryConfig(
+              path,
+              localPath,
+              url,
+              Strategy.HEAD,
+              projectDirectory
+          );
+
+          config.getRepositories().add(repositoryConfig);
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     private void configureGithubRepositories(Config config, int repositoryIndex, Map<Object, Object> map) {
@@ -322,6 +378,63 @@ public class ConfigConstructor extends Constructor {
     private String castRepositoryNameValue(Object object, int repositoryIndex) {
       assertNotEmpty(object, "repsitories[%d].name must not be empty", repositoryIndex);
       assertIsString(object, "repsitories[%d].name must be a string", repositoryIndex);
+
+      return (String) object;
+    }
+
+    private String castRepositoryPathValue(Object object, int repositoryIndex) {
+      if (null == object) {
+        object = "";
+      }
+
+      assertIsString(object, "repsitories[%d].path must be a string", repositoryIndex);
+
+      return (String) object;
+    }
+
+    private URL castCgitBaseUrlValue(Object object, int repositoryIndex) {
+      assertNotEmpty(object, "repsitories[%d].baseUrl must not be empty", repositoryIndex);
+      assertIsString(object, "repsitories[%d].baseUrl must be a string", repositoryIndex);
+
+      try {
+        return new URL((String) object);
+      } catch (MalformedURLException e) {
+        throw new InvalidConfigException(
+            String.format("repsitories[%d].baseUrl must be a valid url", repositoryIndex),
+            e
+        );
+      }
+    }
+
+    private String castCgitPathPrefixValue(Object object, int repositoryIndex) {
+      assertNotEmpty(object, "repsitories[%d].pathPrefix must not be empty", repositoryIndex);
+      assertIsString(object, "repsitories[%d].pathPrefix must be a string", repositoryIndex);
+
+      final String string = (String) object;
+
+      assertStartsWith(string, "/", "repsitories[%d].pathPrefix must start with a /", repositoryIndex);
+      assertEndsWith(string, "/", "repsitories[%d].pathPrefix must ends with a /", repositoryIndex);
+      assertPath(string, "repsitories[%d].pathPrefix must be a valid, normalized path", repositoryIndex);
+
+      return string;
+    }
+
+    private String castCgitSshUserValue(Object object, int repositoryIndex) {
+      if (null == object || "".equals(object.toString().trim())) {
+        return "git";
+      }
+
+      assertIsString(object, "repsitories[%d].sshUser must be a string", repositoryIndex);
+
+      return (String) object;
+    }
+
+    private String castCgitPathValue(Object object, int repositoryIndex) {
+      if (null == object) {
+        object = "";
+      }
+
+      assertIsString(object, "repsitories[%d].path must be a string", repositoryIndex);
 
       return (String) object;
     }
