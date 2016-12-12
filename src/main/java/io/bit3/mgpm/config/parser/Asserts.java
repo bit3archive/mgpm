@@ -2,8 +2,10 @@ package io.bit3.mgpm.config.parser;
 
 import io.bit3.mgpm.config.InvalidConfigException;
 
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class Asserts {
   public static void assertNotNull(Object object, String message, Object... arguments) {
@@ -48,6 +50,30 @@ public class Asserts {
 
   public static void assertIsMap(Object object, String message, Object... arguments) {
     if (!(object instanceof Map)) {
+      throw new InvalidConfigException(
+          String.format(message, arguments)
+      );
+    }
+  }
+
+  public static void assertStartsWith(String string, String prefix, String message, Object... arguments) {
+    if (!string.startsWith(prefix)) {
+      throw new InvalidConfigException(
+          String.format(message, arguments)
+      );
+    }
+  }
+
+  public static void assertEndsWith(String string, String suffix, String message, Object... arguments) {
+    if (!string.endsWith(suffix)) {
+      throw new InvalidConfigException(
+          String.format(message, arguments)
+      );
+    }
+  }
+
+  public static void assertPath(String string, String message, Object... arguments) {
+    if (!Objects.equals(string, Paths.get(string).normalize().toString() + "/")) {
       throw new InvalidConfigException(
           String.format(message, arguments)
       );
