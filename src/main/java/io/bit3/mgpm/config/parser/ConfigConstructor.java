@@ -5,6 +5,7 @@ import static io.bit3.mgpm.config.parser.Asserts.assertIsBoolean;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsList;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsMap;
 import static io.bit3.mgpm.config.parser.Asserts.assertIsString;
+import static io.bit3.mgpm.config.parser.Asserts.assertMatch;
 import static io.bit3.mgpm.config.parser.Asserts.assertNotEmpty;
 import static io.bit3.mgpm.config.parser.Asserts.assertStartsWith;
 import static io.bit3.mgpm.config.parser.Asserts.assertPath;
@@ -144,6 +145,7 @@ public class ConfigConstructor extends Constructor {
       final URL baseUrl = castCgitBaseUrlValue(map.get("baseUrl"), repositoryIndex);
       final String pathPrefix = castCgitPathPrefixValue(map.get("pathPrefix"), repositoryIndex);
       final String sshUser = castCgitSshUserValue(map.get("sshUser"), repositoryIndex);
+      final String join = castCgitJoinValue(map.get("join"), repositoryIndex);
       final String path = castCgitPathValue(map.get("path"), repositoryIndex);
 
       File parentDir = new File(Paths.get(".").toAbsolutePath().normalize().toString());
@@ -157,7 +159,11 @@ public class ConfigConstructor extends Constructor {
 
         for (Element link : links) {
           final String fullPath = link.attr("href").replaceFirst("/$", "");
-          final String localPath = fullPath.substring(pathPrefix.length()).replaceFirst("\\.git$", "");
+          String localPath = fullPath.substring(pathPrefix.length()).replaceFirst("\\.git$", "");
+
+          if (StringUtils.isNotEmpty(join)) {
+            localPath = localPath.replace("/", join);
+          }
 
           String url = String.format(
               "ssh://%s@%s%s",
@@ -425,6 +431,17 @@ public class ConfigConstructor extends Constructor {
       }
 
       assertIsString(object, "repsitories[%d].sshUser must be a string", repositoryIndex);
+
+      return (String) object;
+    }
+
+    private String castCgitJoinValue(Object object, int repositoryIndex) {
+      if (null == object) {
+        object = "";
+      }
+
+      assertIsString(object, "repsitories[%d].join must be a string", repositoryIndex);
+      assertMatch((String) object, "[\\w\\- ]+", "repsitories[%d].join must not contain special characters", repositoryIndex);
 
       return (String) object;
     }
