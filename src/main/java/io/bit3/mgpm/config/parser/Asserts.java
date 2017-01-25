@@ -79,4 +79,12 @@ public class Asserts {
       );
     }
   }
+
+  public static void assertMatch(String string, String regex, String message, Object... arguments) {
+    if (!string.matches(regex)) {
+      throw new InvalidConfigException(
+          String.format(message, arguments)
+      );
+    }
+  }
 }
