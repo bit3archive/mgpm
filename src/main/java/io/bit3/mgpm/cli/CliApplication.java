@@ -137,7 +137,7 @@ public class CliApplication {
         Map<String, Worker.Stats> branchStats = worker.getBranchStats();
         Map<String, List<String>> remoteBranchesUsedAsUpstream = new HashMap<>();
 
-        int padding = localBranchNames.stream().mapToInt(String::length).max().orElseGet(() -> 0);
+        int padding = localBranchNames.stream().mapToInt(String::length).max().orElseGet(() -> 1);
         String pattern = "%-" + padding + "s";
         boolean printDetails = true;
 
