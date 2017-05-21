@@ -307,6 +307,11 @@ public class Worker implements Runnable {
 
       try {
         rebase = git("config", "--local", "--get", String.format("branch.%s.rebase", branchName)).toLowerCase();
+
+        if (StringUtils.isBlank(rebase)) {
+          // not defined for this branch, use global setting instead
+          rebase = git("config", "--get", "pull.rebase");
+        }
       } catch (GitProcessException e) {
         // exception means, there is no remote configured
       }
