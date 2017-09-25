@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
@@ -255,9 +256,9 @@ public class ConfigConstructor extends Constructor {
 
       projects.sort((p1, p2) -> p1.getName().compareToIgnoreCase(p2.getName()));
 
-      File parentDir = new File(Paths.get(".").toAbsolutePath().normalize().toString());
+      Path parentDirPath = Paths.get(".").toAbsolutePath().normalize();
       if (StringUtils.isNotEmpty(path)) {
-        parentDir = new File(parentDir, path);
+        parentDirPath = parentDirPath.resolve(path);
       }
 
       for (GitlabProject project : projects) {
@@ -268,8 +269,8 @@ public class ConfigConstructor extends Constructor {
 
         String projectName = project.getName();
         String url = project.getSshUrl();
-        String projectPathFragment = project.getPath();
-        File projectDirectory = new File(parentDir, projectPathFragment);
+        String projectPathFragment = project.getPathWithNamespace().replaceFirst("^" + Pattern.quote(namespace) + "/", "");
+        File projectDirectory = parentDirPath.resolve(projectPathFragment).toFile();
         RepositoryConfig repositoryConfig = new RepositoryConfig(
             path,
             projectName,
@@ -288,12 +289,11 @@ public class ConfigConstructor extends Constructor {
 
         GitlabAPI api = GitlabAPI.connect(hostUrl, token);
 
-        Pattern pattern = Pattern.compile(projectPattern);
+        Pattern pattern = Pattern.compile(Pattern.quote(namespace) + "/" + projectPattern);
 
         return api.getProjects()
             .stream()
-            .filter(gitlabProject -> namespace.equals(gitlabProject.getNamespace().getName()))
-            .filter(gitlabProject -> pattern.matcher(gitlabProject.getName()).matches())
+            .filter(gitlabProject -> pattern.matcher(gitlabProject.getPathWithNamespace()).matches())
             .collect(Collectors.toList());
       } catch (IOException e) {
         throw new RuntimeException(e);
